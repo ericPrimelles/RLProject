@@ -1,7 +1,6 @@
 import datetime
 import os
 import tensorflow as tf
-#from learning.Q_Learning import Q_Learning
 
 import numpy as np
 
@@ -11,7 +10,6 @@ class Runner(object):
         self.env = env
         self.train = train  # True: entrenar agente, False: se carga agente entrenado
 
-        self.score = 0  
         self.episode = 1 
         self.last_10_ep_rewards = []
 
@@ -45,18 +43,22 @@ class Runner(object):
         """Entrenamiento del agente en la cantidad de episodios dados."""
         while self.episode <= episodes:
             obs = self.env.reset()
-            obs = self.agent.select_army(obs)
-
             self.score = 0
             done = False
 
             while True:
                 if obs.last():
                     break
+
                 state, pos_marine = self.agent.state_marine(obs) 
-                action = self.agent.step(state, pos_marine)
-                obs = self.env.step(action) # next_state, reward, done, info = env.step(action)
                 
+                if obs.first():
+                    action = self.agent._SELECT_ARMY
+                else:
+                    action = self.agent.step(state, pos_marine)
+                    
+                obs = self.env.step(action) 
+
                 next_state, pos_marine = self.agent.state_marine(obs) 
                 reward = obs.reward
                 done = reward > 0

@@ -1,5 +1,3 @@
-from pysc2.lib import actions, features, units
-import numpy as np
 import math
 
 def state_of_marine(marine, beacon, screen, distance_window):
@@ -21,22 +19,22 @@ def discretize_distance_float(dist, screen, factor=1.0):
 
 def move_to_position(action, screen_size):
     # Definición de la posibles acciones
-    dest = []
+    destination = []
     if action == 0:
-        dest = [0, screen_size] # arriba
+        destination = [0, screen_size] # arriba
     elif action == 1:
-        dest = [screen_size, 0] # derecha
+        destination = [screen_size, 0] # derecha
     elif action == 2:
-        dest = [0, -screen_size] # abajo
+        destination = [0, -screen_size] # abajo
     elif action == 3:
-        dest = [-screen_size, 0] # izquierda
+        destination = [-screen_size, 0] # izquierda
     elif action == 4:
-        dest = [screen_size, screen_size] # derecha arriba 
+        destination = [screen_size, screen_size] # derecha arriba 
     elif action == 5:
-        dest = [screen_size, -screen_size] # derecha abajo 
+        destination = [screen_size, -screen_size] # derecha abajo 
     elif action == 6:
-        dest = [-screen_size, screen_size] # izquierda arriba 
+        destination = [-screen_size, screen_size] # izquierda arriba 
     elif action == 7:
-        dest = [-screen_size, -screen_size] # izquierda abajo
+        destination = [-screen_size, -screen_size] # izquierda abajo
 
-    return dest
+    return destination

@@ -1,6 +1,4 @@
 from pysc2.env import sc2_env
-from pysc2.env import available_actions_printer
-
 from pysc2.lib import features
 
 class Environment(object):
@@ -15,7 +13,6 @@ class Environment(object):
                         step_mul=step_mul,
                         visualize=visualize
                         )
-        #self.sc2_env = available_actions_printer.AvailableActionsPrinter(self.sc2_env)
 
     def reset(self):
         return self.__preprocess_obs(self.sc2_env.reset())

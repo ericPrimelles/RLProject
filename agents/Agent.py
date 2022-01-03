@@ -1,31 +1,27 @@
-#from learning.Q_Learning import Q_Learning
-#from pysc2.agents import base_agent
-
 import tensorflow as tf
+import numpy as np
 import random
 
-from agent import AbstractAgent
+from agents.AbstractAgent import AbstractAgent
 
 from minigames.utils import state_of_marine, move_to_position
 from utils.select_algorithm import choose_algorithm
 from utils.replay_buffer import UniformBuffer
 
-
 class Agent(AbstractAgent):
-
-    def __init__(self, actions, screen_size, method, gamma=0.99, epsilon=1.0, lr=1e-4, loss='mse', batch_size=32,
+    def __init__(self, env, action_dim, screen_size, method, gamma=0.99, epsilon=1.0, lr=1e-4, loss='mse', batch_size=32,
                 epsilon_decrease=0.001, epsilon_min=0.05, update_target=2000, num_episodes=5000, max_memory=100000):
-        
         super(Agent, self).__init__(screen_size)
-        self.actions = actions
+
+        obs = env.reset()
+        self.input_dim = np.array(obs.observation["feature_units"]).shape[1]
+        self.action_dim = action_dim
 
         # Hiperparametros
-        #self.input_dims = input_dims
-        #self.num_actions = num_actions
-
         self.gamma = gamma
         self.epsilon = epsilon
         self.lr = lr
+        self.loss = loss
         self.batch_size = batch_size
 
         self.epsilon_decrease = epsilon_decrease
@@ -38,7 +34,8 @@ class Agent(AbstractAgent):
 
         # Red principal y target.
         self.main_nn, self.target_nn, \
-        self.optimizer, self.loss_fn = choose_algorithm(method, self.lr, loss)
+        self.optimizer, self.loss_fn = choose_algorithm(method, self.input_dim, self.action_dim,
+                                                        self.lr, self.loss)
             
         # Buffer donde se almacenaran las experiencias del agente.
         self.buffer = UniformBuffer(self.memory_size)
@@ -47,9 +44,9 @@ class Agent(AbstractAgent):
         action = self.select_epsilon_greedy_action(state)
 
         # Dependiendo de la acción se mueve ciertas coordenadas
-        dest = move_to_position(action, self.screen_size)
+        destination = move_to_position(action, self.screen_size)
 
-        return self._MOVE_SCREEN("now", self._xy_offset(pos_marine, dest[0], dest[1]))
+        return self._MOVE_SCREEN("now", self._xy_offset(pos_marine, destination[0], destination[1]))
 
     def state_marine(self, obs):
         # Representación del beacon y marino
@@ -71,7 +68,7 @@ class Agent(AbstractAgent):
         """Realiza una acción aleatoria con prob. épsilon; de lo contrario, realiza la mejor acción."""
         result = tf.random.uniform((1,))
         if result < self.epsilon and result < aux_epsilon:
-            return random.choice(self.actions) #env.action_space.sample() # Acción aleatoria.
+            return random.choice(range(self.action_dim)) #env.action_space.sample() # Acción aleatoria.
         else:
             return tf.argmax(self.main_nn(state)[0]).numpy() # Acción greddy.
 
@@ -82,9 +79,9 @@ class Agent(AbstractAgent):
         target = rewards + (1. - dones) * self.gamma * max_next_qs
         with tf.GradientTape() as tape:
             qs = self.main_nn(states)
-            action_masks = tf.one_hot(actions, self.actions)
+            action_masks = tf.one_hot(actions, self.action_dim)
             masked_qs = tf.reduce_sum(action_masks * qs, axis=-1)
-            loss = self.mse(target, masked_qs)
+            loss = self.loss_fn(target, masked_qs)
         grads = tape.gradient(loss, self.main_nn.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.main_nn.trainable_variables))
         return loss
