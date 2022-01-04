@@ -1,4 +1,5 @@
 import tensorflow as tf
+from keras. layers import InputLayer, Conv2D, MaxPool2D, Flatten
 
 #class BaseDQN(tf.keras.Model):
 #    """Red neuronal fully connected."""
@@ -24,12 +25,22 @@ class BaseDQN(tf.keras.Model):
     def __init__(self, input_dim, action_dim):
         super(BaseDQN, self).__init__()
         #self.state_input = tf.keras.layers.Input((input_dim,))
-        self.dense1 = tf.keras.layers.Dense(75, activation="relu")
-        self.dense2 = tf.keras.layers.Dense(75, activation="relu")
-        self.dense3 = tf.keras.layers.Dense(action_dim, dtype=tf.float32) # No activation
+        self.conv1 = Conv2D(32, input_shape=input_dim, activation='relu', kernel_size=(3, 3))
+        self.mp1 = MaxPool2D()
+        self.conv2 = Conv2D(64, activation='relu', kernel_size=(3, 3))
+        self.mp2 = MaxPool2D()
+        self.fltt = Flatten()
+        self.dense1 = tf.keras.layers.Dense(64, activation="relu")
+        self.dense2 = tf.keras.layers.Dense(128, activation="relu")
+        self.out = tf.keras.layers.Dense(action_dim, activation='relu')
 
-    def call(self, state):
+    def call(self, states):
         """Forward pass."""
-        x = self.dense1(state)
+        x = self.conv1(states)
+        x = self.mp1(x)
+        x = self.conv2(x)
+        x = self.mp2(x)
+        x = self.fltt(x)
+        x = self.dense1(x)
         x = self.dense2(x)
-        return self.dense3(x)
+        return self.out(x)

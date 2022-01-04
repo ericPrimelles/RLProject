@@ -14,7 +14,10 @@ class Agent(AbstractAgent):
         super(Agent, self).__init__(screen_size)
 
         obs = env.reset()
-        self.input_dim = np.array(obs.observation["feature_units"]).shape[1]
+        screen = np.array(obs.observation['feature_screen'])
+        screen = np.reshape(screen, (screen.shape[1], screen.shape[2], screen.shape[0]))
+        screen = tf.convert_to_tensor(screen, dtype=tf.float64)
+        self.input_dim = screen.shape
         self.action_dim = action_dim
 
         # Hiperparametros
@@ -38,6 +41,7 @@ class Agent(AbstractAgent):
                                                         self.lr, self.loss)
             
         # Buffer donde se almacenaran las experiencias del agente.
+
         self.buffer = UniformBuffer(self.memory_size)
 
     def step(self, state, pos_marine):
@@ -46,18 +50,21 @@ class Agent(AbstractAgent):
         # Dependiendo de la acción se mueve ciertas coordenadas
         destination = move_to_position(action, self.screen_size)
 
-        return self._MOVE_SCREEN("now", self._xy_offset(pos_marine, destination[0], destination[1]))
+        return action, self._MOVE_SCREEN("now", self._xy_offset(pos_marine, destination[0], destination[1]))
 
     def state_marine(self, obs):
         # Representación del beacon y marino
         beacon = self.get_beacon(obs)
         marine = self.get_marine(obs)
 
-        # Estado en el que se encuentra el marino con respecto al beacon
-        state = state_of_marine(marine, beacon, self.screen_size, 10)
+        dist = np.hypot((beacon.x - marine.x), (beacon.y - marine.y))
+
+        screen = np.array(obs.observation['feature_screen'])
+        screen = np.reshape(screen, (screen.shape[1], screen.shape[2], screen.shape[0]))
+        state = tf.convert_to_tensor(screen, dtype=tf.float64)
         pos_marine = self.get_unit_pos(marine)
 
-        return str(state), pos_marine
+        return state, pos_marine, dist
 
     def select_army(self, obs):
         # La primera acción selecciona a los army
@@ -70,11 +77,13 @@ class Agent(AbstractAgent):
         if result < self.epsilon and result < aux_epsilon:
             return random.choice(range(self.action_dim)) #env.action_space.sample() # Acción aleatoria.
         else:
-            return tf.argmax(self.main_nn(state)[0]).numpy() # Acción greddy.
+            state = np.reshape(state, (1, tf.shape(state)[0].numpy(), tf.shape(state)[1].numpy(), tf.shape(state)[2].numpy()))
+            return tf.argmax(self.main_nn.predict(state)[0]).numpy() # Acción greddy.
 
     def train_step(self, states, actions, rewards, next_states, dones):
         """Realiza una iteración de entrenamiento en un batch de datos."""
-        next_qs = self.target_nn(next_states)
+
+        next_qs = self.target_nn.predict(next_states, batch_size=self.batch_size)
         max_next_qs = tf.reduce_max(next_qs, axis=-1)
         target = rewards + (1. - dones) * self.gamma * max_next_qs
         with tf.GradientTape() as tape:
@@ -93,6 +102,15 @@ class Agent(AbstractAgent):
         else:
             self.epsilon = self.epsilon_min
 
+
+    def copy_weights(self, Copy_from, Copy_to):
+        """
+        Function to copy weights of a model to other
+        """
+        variables2 = Copy_from.trainable_variables
+        variables1 = Copy_to.trainable_variables
+        for v1, v2 in zip(variables1, variables2):
+            v1.assign(v2.numpy())
     def save_model(self, filename):
         self.learner.save_q_table(filename + '/model.pkl')
 

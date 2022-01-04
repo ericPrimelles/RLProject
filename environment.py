@@ -2,7 +2,7 @@ from pysc2.env import sc2_env
 from pysc2.lib import features
 
 class Environment(object):
-    def __init__(self, map_name, screen_size=32, minimap_size=32, step_mul=8, visualize=False):
+    def __init__(self, map_name, screen_size=32, minimap_size=32, step_mul=10, visualize=False):
         self.sc2_env = sc2_env.SC2Env(
                         map_name=map_name,
                         players=[sc2_env.Agent(sc2_env.Race.terran)],
